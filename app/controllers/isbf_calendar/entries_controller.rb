@@ -44,13 +44,13 @@ module IsbfCalendar
 
     def entry_attributes
       data = params.require(:entry).permit(:title, :starts_at, :ends_at, :all_day, :note)
-      {
-        title: data[:title]&.strip,
-        starts_at: parse_time(data[:starts_at]),
-        ends_at: parse_time(data[:ends_at]),
-        all_day: ActiveModel::Type::Boolean.new.cast(data[:all_day]),
-        note: data[:note]&.strip,
-      }
+      attributes = {}
+      attributes[:title] = data[:title]&.strip if data.key?(:title)
+      attributes[:starts_at] = parse_time(data[:starts_at]) if data.key?(:starts_at)
+      attributes[:ends_at] = parse_time(data[:ends_at]) if data.key?(:ends_at)
+      attributes[:all_day] = ActiveModel::Type::Boolean.new.cast(data[:all_day]) if data.key?(:all_day)
+      attributes[:note] = data[:note]&.strip if data.key?(:note)
+      attributes
     end
 
     def parse_time(value)

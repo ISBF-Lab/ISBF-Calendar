@@ -49,7 +49,7 @@ RSpec.describe IsbfCalendar::EntriesController do
     expect(response.status).to eq(201)
     id = response.parsed_body.dig("entry", "id")
 
-    patch "/isbf/api/entries/#{id}.json", params: { entry: entry_attributes.merge(title: "课程复习") }
+    patch "/isbf/api/entries/#{id}.json", params: { entry: { title: "课程复习" } }
     expect(response.status).to eq(200)
     expect(response.parsed_body.dig("entry", "title")).to eq("课程复习")
 
