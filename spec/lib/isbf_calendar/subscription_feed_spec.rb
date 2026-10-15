@@ -25,7 +25,8 @@ RSpec.describe IsbfCalendar::SubscriptionFeed do
 
   it "uses exclusive DATE ends and keeps deadlines as exact points" do
     manual = Fabricate(:isbf_calendar_entry, user:, all_day: true, starts_at: Time.utc(2026, 10, 20), ends_at: Time.utc(2026, 10, 22))
-    official = Fabricate(:isbf_calendar_official_entry, user:, all_day: true, starts_at: Time.iso8601("2026-10-20T00:00:00+08:00"), ends_at: Time.iso8601("2026-10-21T00:00:00+08:00"))
+    official_source = Fabricate(:isbf_calendar_official_item, all_day: true, starts_at: Time.iso8601("2026-10-20T00:00:00+08:00"), ends_at: Time.iso8601("2026-10-21T00:00:00+08:00"))
+    official = Fabricate(:isbf_calendar_official_entry, user:, source_item: official_source)
     deadline_source = Fabricate(:isbf_calendar_official_deadline)
     deadline = Fabricate(:isbf_calendar_official_entry, user:, source_item: deadline_source)
     expect(export(manual)).to include("DTSTART;VALUE=DATE:20261020", "DTEND;VALUE=DATE:20261022")
