@@ -1,5 +1,7 @@
 en:
   isbf_calendar:
+    subscription_name: "ISBF personal calendar"
+    subscription_window: "Saved personal entries from the past year through the next two years. Private notes included."
     invalid_items: "Check the official calendar items and their versions."
     invalid_time: "Enter a valid activity time or deadline."
     version_conflict: "The official information has changed. Refresh it before continuing."

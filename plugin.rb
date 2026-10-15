@@ -17,6 +17,28 @@ require_relative "lib/isbf_calendar/official_items"
 register_svg_icon "calendar-days"
 
 after_initialize do
+  require_relative "lib/isbf_calendar/subscription_feed"
+  subscription_available = respond_to?(:register_calendar_subscription_feed)
+  if subscription_available
+    add_user_api_key_scope(
+      :personal_calendar,
+      methods: :get,
+      actions: IsbfCalendar::SubscriptionFeed::ACTION,
+      formats: :ics
+    )
+    add_api_parameter_route(
+      methods: :get,
+      actions: IsbfCalendar::SubscriptionFeed::ACTION,
+      formats: :ics
+    )
+    register_calendar_subscription_feed(
+      name: IsbfCalendar::SubscriptionFeed::NAME,
+      scope: IsbfCalendar::SubscriptionFeed::SCOPE,
+      description_key: "isbf_calendar.preferences.personal_description",
+      url: ->(base_url, _user, key) { "#{base_url}/isbf/api/calendar.ics?user_api_key=#{key}" }
+    )
+  end
+  Rails.application.config.filter_parameters |= [:user_api_key]
   require_relative "app/models/isbf_calendar/entry"
   require_relative "app/models/isbf_calendar/official_item"
   require_relative "app/services/isbf_calendar/publish_official_items"
@@ -136,7 +158,8 @@ after_initialize do
     {
       official_category_id: IsbfCalendar.official_category_id,
       timezone: IsbfCalendar::TIMEZONE,
-      max_items: IsbfCalendar::MAX_OFFICIAL_ITEMS
+      max_items: IsbfCalendar::MAX_OFFICIAL_ITEMS,
+      subscription_feed: subscription_available ? IsbfCalendar::SubscriptionFeed::NAME : nil
     }
   end
 end

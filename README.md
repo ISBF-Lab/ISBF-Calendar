@@ -34,11 +34,29 @@ Discourse 插件，提供 `/isbf/calendar`、`/isbf/workbench` 和仅当前用�
 
 行程响应包含 `source_item_id`、`accepted_revision`、`needs_update`、`cancelled`、`source_unavailable`、`source_url` 和 `latest_source`。后者仅在当前用户仍可访问源消息时包含最新内容；无法访问的取消项仅暴露取消状态与版本。
 
-不支持重复日程、到点提醒、自然语言识别或外部日历集成。
+不支持重复日程、到点提醒或自然语言识别。
+
+## Apple 日历私人订阅
+
+`GET /isbf/api/calendar.ics` 为当前已认证用户导出私人订阅，复用 Discourse 原生 `register_calendar_subscription_feed`、`add_user_api_key_scope`、`add_api_parameter_route` 和 `CalendarSubscriptionsController`，不创建新密钥系统或数据库表。需要支持这些原生接口的 Core；站点元数据 `site.isbf_calendar.subscription_feed` 为 `isbf_personal` 时前端才展示入口。旧 Core 未注册时该字段为 `null`。
+
+前端使用原生 `GET/POST/DELETE /calendar-subscriptions.json` 查询、生成和撤销订阅，使用返回的 `urls.isbf_personal`。主题负责日历页入口及 `calendar-subscriptions-feeds` outlet 的原生 `CalendarSubscriptionUrl` 行；插件没有新增前端资源。生成链接会重新生成当前用户所有原生日历订阅的共享密钥，撤销也会同时停用书签、活动等其他原生订阅。已有链接无法再次取回，前端应先查询状态并在重新生成或撤销前说明影响，禁止自动重新生成。
+
+链接含私人访问密钥，持有者可读取该用户的日程与私人备注。密钥权限 `isbf-calendar:personal_calendar` 仅匹配此 GET ICS 动作；不支持 JSON、写入或选择其他用户。请求使用原生 `user_api_key` 查询参数鉴权，返回 `Cache-Control: private, no-store`，并过滤该参数的 Rails 日志。反向代理或外部访问日志也须沿用原生日历订阅的敏感查询参数过滤策略，不保存完整订阅 URL。
+
+订阅范围为每次请求时过去一年到未来两年，包含与窗口重叠的全部本人记录，不按条数截断；范围同时写在日历描述。窗口之外和本人删除的记录会从后续完整 feed 中消失，客户端移除行为与刷新时机取决于 Apple 日历。此为服务器到 Apple 的单向、只读订阅，刷新由 Apple 控制，不保证立即更新；Apple 中的修改不会写回本站。
+
+个人和官方导入项均只导出本人已保存的名称、时间和私人备注，接受官方更新后才改变快照。不导出源消息正文、最新地点或主办方。来源 URL 仅在当前用户仍可见来源话题与首帖时提供。官方取消或话题删除后保留原快照与备注，并输出 `STATUS:CANCELLED`；取消状态允许在失去来源权限后继续反映，绝不附带新源内容。创建时间来自个人记录；修改时间和 DTSTAMP 通常来自个人记录，取消时取个人和源记录修改时间的较晚值，避免已取消状态被客户端忽略。
+
+UID 固定使用站点主机名、所有者 ID 与记录 ID，不包含访问密钥或当前时间。时间点使用 UTC；零时长截止项不补造结束时间。全天项使用排除结束日的 DATE：手动项沿用 UTC 日期约定，官方快照按其既有北京时间零点存储约定还原日期。文本复用原生 `IcalEncoder`，补充孤立 CR 处理，并以 CRLF 和不拆分 UTF-8 字符的 75 字节折行输出。
 
 ## 验证与部署
 
 使用独立数据库运行插件测试，不重置运行中的开发站点：
+
+完整测试套件沿用线上 `discourse-academy-roles` 的身份与 Guardian 权限契约，运行时须同时加载该依赖（包括其 SiteSetting 与 moderator 权限扩展）；仅装 stock Core 不能验证这些已有官方发布测试。该依赖内置于本站 Core fork `ISBF-Lab/ISBFweb`。新增订阅回归位于 `spec/requests/isbf_calendar/subscriptions_controller_spec.rb` 和 `spec/lib/isbf_calendar/subscription_feed_spec.rb`。
+
+CI 使用官方 `discourse/discourse_test:slim` 容器和 Core 测试数据库启动脚本，先检出本站生产 Core 提交 `132cc95d043db01251eedf9c93b3927cd5ffee91`，再将当前插件检出到 `plugins/isbf-calendar`，创建独立测试数据库并运行完整插件 specs；不构建前端。Ruby job 另外执行语法检查。Core 提交有意固定以验证当前部署兼容性，不代表验证上游最新版本；升级 Core 时须同步更新该 ref 并重新验证。容器镜像标签会随官方更新，首次 CI 仍需确认其运行时与固定 Core 的兼容性。
 
 ```sh
 RAILS_ENV=test LOAD_PLUGINS=1 RAILS_DB=isbf_calendar_test bin/rake db:create db:migrate

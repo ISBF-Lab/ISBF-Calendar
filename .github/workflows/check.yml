@@ -1,11 +1,71 @@
-name: Plugin syntax checks
+name: Plugin checks
 
 on:
   pull_request:
   push:
     branches: [main, codex/calendar-workbench]
 
+permissions:
+  contents: read
+
 jobs:
+  discourse:
+    name: Plugin specs on production Core
+    runs-on: ubuntu-latest
+    container: discourse/discourse_test:slim
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      RAILS_ENV: test
+      LOAD_PLUGINS: "1"
+      PGUSER: discourse
+      PGPASSWORD: discourse
+    steps:
+      - name: Set working directory owner
+        run: chown root:root .
+      # This fork contains the real academy identity settings and Guardian extensions.
+      - name: Checkout production Core
+        uses: actions/checkout@v4
+        with:
+          repository: ISBF-Lab/ISBFweb
+          ref: 132cc95d043db01251eedf9c93b3927cd5ffee91
+          persist-credentials: false
+      - name: Checkout plugin under test
+        uses: actions/checkout@v4
+        with:
+          path: plugins/isbf-calendar
+          persist-credentials: false
+      - name: Start Redis
+        run: redis-server /etc/redis/redis.conf --daemonize yes --logfile ""
+      - name: Start Postgres
+        run: |
+          chown -R postgres /var/run/postgresql
+          sudo -E -u postgres script/start_test_db.rb
+          sudo -u postgres psql -c "CREATE ROLE $PGUSER LOGIN SUPERUSER PASSWORD '$PGPASSWORD';"
+      - name: Reuse gems from test image
+        run: ln -s /var/www/discourse/vendor/bundle vendor/bundle
+      - name: Install gems
+        run: |
+          bundle config --local path vendor/bundle
+          bundle config --local deployment true
+          bundle config --local without development
+          bundle install --jobs 2
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-isbf-core-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create and migrate test database
+        run: bundle exec rake db:create db:migrate
+      - name: Run complete plugin specs
+        run: bundle exec rspec plugins/isbf-calendar/spec
   ruby:
     runs-on: ubuntu-latest
     steps:

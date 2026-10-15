@@ -1,5 +1,7 @@
 zh_CN:
   isbf_calendar:
+    subscription_name: "国金个人日历"
+    subscription_window: "个人保存的日程，范围为过去一年至未来两年，包含私人备注。"
     invalid_items: "请检查官方时间项的内容及版本。"
     invalid_time: "请填写有效的活动时间或截止时间。"
     version_conflict: "官方信息已有变更，请刷新后再操作。"

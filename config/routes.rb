@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 IsbfCalendar::Engine.routes.draw do
+  get "/api/calendar" => "subscriptions#show", constraints: { format: "ics" }
   get "/api/entries" => "entries#index"
   get "/api/entry-updates" => "entries#updates"
   get "/api/entries/:id" => "entries#show"
