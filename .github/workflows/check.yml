@@ -16,11 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Complete specs on production Core
-            repository: ISBF-Lab/ISBFweb
-            ref: 132cc95d043db01251eedf9c93b3927cd5ffee91
+          - name: Complete specs with production identity snapshot
+            identity: true
+            repository: discourse/discourse
+            ref: main
             specs: plugins/isbf-calendar/spec
           - name: Subscription adapter on upstream Core
+            identity: false
             repository: discourse/discourse
             ref: main
             specs: plugins/isbf-calendar/spec/requests/isbf_calendar/subscriptions_controller_spec.rb plugins/isbf-calendar/spec/lib/isbf_calendar/subscription_feed_spec.rb
@@ -37,19 +39,23 @@ jobs:
     steps:
       - name: Set working directory owner
         run: chown root:root .
-      # This fork contains the real academy identity settings and Guardian extensions.
-      - name: Checkout production Core
+      - name: Checkout native Core
         uses: actions/checkout@v4
         with:
           repository: ${{ matrix.repository }}
           ref: ${{ matrix.ref }}
-          ssh-key: ${{ matrix.repository == 'ISBF-Lab/ISBFweb' && secrets.ISBF_CORE_READ_KEY || '' }}
           persist-credentials: false
       - name: Checkout plugin under test
         uses: actions/checkout@v4
         with:
           path: plugins/isbf-calendar
           persist-credentials: false
+      - name: Load fixed production identity test dependency
+        if: matrix.identity
+        run: |
+          ruby -rjson -rdigest -e 'base="plugins/isbf-calendar/test/dependencies"; manifest=JSON.parse(File.read("#{base}/production-identity.json")); manifest.fetch("files").each { |path, hash| abort("Identity source hash mismatch") unless Digest::SHA256.file("#{base}/discourse-academy-roles/#{path}").hexdigest == hash }'
+          test ! -e plugins/discourse-academy-roles
+          cp -a plugins/isbf-calendar/test/dependencies/discourse-academy-roles plugins/discourse-academy-roles
       - name: Start Redis
         run: redis-server /etc/redis/redis.conf --daemonize yes --logfile ""
       - name: Start Postgres

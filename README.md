@@ -56,7 +56,7 @@ UID 固定使用站点主机名、所有者 ID 与记录 ID，不包含访问密
 
 完整测试套件沿用线上 `discourse-academy-roles` 的身份与 Guardian 权限契约，运行时须同时加载该依赖（包括其 SiteSetting 与 moderator 权限扩展）；仅装 stock Core 不能验证这些已有官方发布测试。该依赖内置于本站 Core fork `ISBF-Lab/ISBFweb`。新增订阅回归位于 `spec/requests/isbf_calendar/subscriptions_controller_spec.rb` 和 `spec/lib/isbf_calendar/subscription_feed_spec.rb`。
 
-CI 使用官方 `discourse/discourse_test:slim` 容器和 Core 测试数据库启动脚本，先检出本站生产 Core 提交 `132cc95d043db01251eedf9c93b3927cd5ffee91`，再将当前插件检出到 `plugins/isbf-calendar`，创建独立测试数据库并运行完整插件 specs；不构建前端。Ruby job 另外执行语法检查。Core 提交有意固定以验证当前部署兼容性，不代表验证上游最新版本；升级 Core 时须同步更新该 ref 并重新验证。容器镜像标签会随官方更新，首次 CI 仍需确认其运行时与固定 Core 的兼容性。
+CI 使用官方 `discourse/discourse_test:slim` 容器和原生 Core 测试数据库启动脚本，分别运行独立订阅适配测试及完整 Calendar specs。完整测试加载 `test/dependencies` 内未经修改的生产身份插件快照，来源为本站已合并提交 `132cc95d043db01251eedf9c93b3927cd5ffee91`，并在复制前逐文件验证 SHA-256。该快照仅用于测试，发布包必须排除 `test/`；不会替换生产身份插件。这样无需跨私有仓库凭据，也不改变仓库禁用部署密钥的设置。测试基于上游 Core，生产固定版本兼容性仍需发布前后实际加载与路由验收；不将 CI 视为真机验证。Ruby job 另执行语法检查。
 
 ```sh
 RAILS_ENV=test LOAD_PLUGINS=1 RAILS_DB=isbf_calendar_test bin/rake db:create db:migrate
