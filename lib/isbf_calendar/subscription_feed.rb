@@ -46,7 +46,7 @@ module IsbfCalendar
         lines << "DTEND;VALUE=DATE:#{entry.ends_at.in_time_zone(zone).strftime("%Y%m%d")}"
       else
         lines << "DTSTART:#{timestamp(entry.starts_at)}"
-        lines << "DTEND:#{timestamp(entry.ends_at)}"
+        lines << "DTEND:#{timestamp(entry.ends_at)}" if entry.ends_at > entry.starts_at
       end
       lines << "DESCRIPTION:#{text(entry.note)}" if entry.note.present?
       lines << "STATUS:CANCELLED" if cancelled

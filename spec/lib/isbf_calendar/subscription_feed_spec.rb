@@ -30,7 +30,8 @@ RSpec.describe IsbfCalendar::SubscriptionFeed do
     deadline = Fabricate(:isbf_calendar_official_entry, user:, source_item: deadline_source)
     expect(export(manual)).to include("DTSTART;VALUE=DATE:20261020", "DTEND;VALUE=DATE:20261022")
     expect(export(official)).to include("DTSTART;VALUE=DATE:20261020", "DTEND;VALUE=DATE:20261021")
-    expect(export(deadline)).to include("DTSTART:20261019T100000Z", "DTEND:20261019T100000Z")
+    expect(export(deadline)).to include("DTSTART:20261019T100000Z")
+    expect(export(deadline)).not_to include("DTEND:")
   end
 
   it "escapes text and folds UTF-8 without permitting CRLF property injection" do
