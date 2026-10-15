@@ -2,7 +2,7 @@
 
 # name: isbf-calendar
 # about: Private personal schedules and routes for the ISBF calendar UI
-# version: 0.3.0
+# version: 0.4.0
 # authors: ISBF Lab
 # url: https://github.com/ISBF-Lab/ISBF-Calendar
 # required_version: 3.4.0

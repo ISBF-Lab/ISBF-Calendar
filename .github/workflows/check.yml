@@ -31,6 +31,7 @@ jobs:
         with:
           repository: ISBF-Lab/ISBFweb
           ref: 132cc95d043db01251eedf9c93b3927cd5ffee91
+          ssh-key: ${{ secrets.ISBF_CORE_READ_KEY }}
           persist-credentials: false
       - name: Checkout plugin under test
         uses: actions/checkout@v4
