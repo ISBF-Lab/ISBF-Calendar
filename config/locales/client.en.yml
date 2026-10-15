@@ -1,0 +1,8 @@
+en:
+  js:
+    isbf_calendar:
+      preferences:
+        personal_description: "Your saved ISBF calendar entries and private notes, from the past year through the next two years."
+    notifications:
+      isbf_calendar:
+        changed: "An official calendar item you added has changed: %{topic_title}"

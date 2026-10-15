@@ -1,0 +1,98 @@
+name: Plugin checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, codex/calendar-workbench]
+
+permissions:
+  contents: read
+
+jobs:
+  discourse:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Complete specs with production identity snapshot
+            identity: true
+            repository: discourse/discourse
+            ref: main
+            specs: plugins/isbf-calendar/spec
+          - name: Subscription adapter on upstream Core
+            identity: false
+            repository: discourse/discourse
+            ref: main
+            specs: plugins/isbf-calendar/spec/requests/isbf_calendar/subscriptions_controller_spec.rb plugins/isbf-calendar/spec/lib/isbf_calendar/subscription_feed_spec.rb
+    container: discourse/discourse_test:slim
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      RAILS_ENV: test
+      LOAD_PLUGINS: "1"
+      PGUSER: discourse
+      PGPASSWORD: discourse
+    steps:
+      - name: Set working directory owner
+        run: chown root:root .
+      - name: Checkout native Core
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.ref }}
+          persist-credentials: false
+      - name: Checkout plugin under test
+        uses: actions/checkout@v4
+        with:
+          path: plugins/isbf-calendar
+          persist-credentials: false
+      - name: Load fixed production identity test dependency
+        if: matrix.identity
+        run: |
+          ruby -rjson -rdigest -e 'base="plugins/isbf-calendar/test/dependencies"; manifest=JSON.parse(File.read("#{base}/production-identity.json")); manifest.fetch("files").each { |path, hash| abort("Identity source hash mismatch") unless Digest::SHA256.file("#{base}/discourse-academy-roles/#{path}").hexdigest == hash }'
+          test ! -e plugins/discourse-academy-roles
+          cp -a plugins/isbf-calendar/test/dependencies/discourse-academy-roles plugins/discourse-academy-roles
+      - name: Start Redis
+        run: redis-server /etc/redis/redis.conf --daemonize yes --logfile ""
+      - name: Start Postgres
+        run: |
+          chown -R postgres /var/run/postgresql
+          sudo -E -u postgres script/start_test_db.rb
+          sudo -u postgres psql -c "CREATE ROLE $PGUSER LOGIN SUPERUSER PASSWORD '$PGPASSWORD';"
+      - name: Cache Ruby dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-isbf-calendar-gems-${{ matrix.repository }}-${{ hashFiles('Gemfile.lock') }}
+      - name: Install gems
+        run: |
+          bundle config --local path vendor/bundle
+          bundle config --local deployment true
+          bundle config --local without development
+          bundle install --jobs 2
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-isbf-core-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create and migrate test database
+        run: bundle exec rake db:create db:migrate
+      - name: Run plugin specs
+        run: bundle exec rspec ${{ matrix.specs }}
+  ruby:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - run: find . -path './.git' -prune -o -name '*.rb' -print -exec ruby -c '{}' \;
