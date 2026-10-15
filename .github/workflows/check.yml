@@ -10,8 +10,20 @@ permissions:
 
 jobs:
   discourse:
-    name: Plugin specs on production Core
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Complete specs on production Core
+            repository: ISBF-Lab/ISBFweb
+            ref: 132cc95d043db01251eedf9c93b3927cd5ffee91
+            specs: plugins/isbf-calendar/spec
+          - name: Subscription adapter on upstream Core
+            repository: discourse/discourse
+            ref: main
+            specs: plugins/isbf-calendar/spec/requests/isbf_calendar/subscriptions_controller_spec.rb plugins/isbf-calendar/spec/lib/isbf_calendar/subscription_feed_spec.rb
     container: discourse/discourse_test:slim
     timeout-minutes: 30
     defaults:
@@ -29,9 +41,9 @@ jobs:
       - name: Checkout production Core
         uses: actions/checkout@v4
         with:
-          repository: ISBF-Lab/ISBFweb
-          ref: 132cc95d043db01251eedf9c93b3927cd5ffee91
-          ssh-key: ${{ secrets.ISBF_CORE_READ_KEY }}
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.ref }}
+          ssh-key: ${{ matrix.repository == 'ISBF-Lab/ISBFweb' && secrets.ISBF_CORE_READ_KEY || '' }}
           persist-credentials: false
       - name: Checkout plugin under test
         uses: actions/checkout@v4
@@ -65,8 +77,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Create and migrate test database
         run: bundle exec rake db:create db:migrate
-      - name: Run complete plugin specs
-        run: bundle exec rspec plugins/isbf-calendar/spec
+      - name: Run plugin specs
+        run: bundle exec rspec ${{ matrix.specs }}
   ruby:
     runs-on: ubuntu-latest
     steps:
