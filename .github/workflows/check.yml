@@ -57,8 +57,11 @@ jobs:
           chown -R postgres /var/run/postgresql
           sudo -E -u postgres script/start_test_db.rb
           sudo -u postgres psql -c "CREATE ROLE $PGUSER LOGIN SUPERUSER PASSWORD '$PGPASSWORD';"
-      - name: Reuse gems from test image
-        run: ln -s /var/www/discourse/vendor/bundle vendor/bundle
+      - name: Cache Ruby dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-isbf-calendar-gems-${{ matrix.repository }}-${{ hashFiles('Gemfile.lock') }}
       - name: Install gems
         run: |
           bundle config --local path vendor/bundle
