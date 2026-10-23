@@ -117,8 +117,8 @@ RSpec.describe IsbfCalendar::OfficialItemsController do
         "organizer" => item.organizer,
         "registration_deadline_id" => deadline.id
       )
+      expect(activity_entry["location"]).to eq("Main hall")
       expect(activity_entry.keys).not_to include(
-        "location",
         "organizer",
         "registration_deadline_id"
       )

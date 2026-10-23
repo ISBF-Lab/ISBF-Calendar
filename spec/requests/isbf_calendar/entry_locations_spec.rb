@@ -5,13 +5,15 @@ require "rails_helper"
 RSpec.describe "Calendar entry locations", type: :request do
   fab!(:owner, :user)
   fab!(:other_user, :user)
+  fab!(:official_group, :group)
   fab!(:category)
   fab!(:topic) { Fabricate(:topic_with_op, category:) }
   fab!(:source) { Fabricate(:isbf_calendar_official_item, topic:, location: "Hall A") }
 
   before do
-    SiteSetting.academy_roles_enabled = true
+    SiteSetting.academy_official_group = official_group.id
     SiteSetting.academy_official_category = category.id
+    SiteSetting.academy_roles_enabled = true
     sign_in(owner)
   end
 
