@@ -583,7 +583,7 @@ RSpec.describe IsbfCalendar::PublishOfficialItems do
         ]
       end
 
-      it "records the information in publication changes while keeping its calendar version" do
+      it "records location in publication changes and advances its calendar version" do
         previous_item =
           item.snapshot.as_json.merge(
             "id" => item.id,
@@ -592,7 +592,7 @@ RSpec.describe IsbfCalendar::PublishOfficialItems do
             "registration_deadline_id" => nil,
           )
 
-        expect_not_enqueued_with(job: :isbf_calendar_notify_change) do
+        expect_enqueued_with(job: :isbf_calendar_notify_change, args: { item_id: item.id, revision: 2 }) do
           expect(result).to run_successfully
         end
 
@@ -600,7 +600,7 @@ RSpec.describe IsbfCalendar::PublishOfficialItems do
         expect(result[:after_items]).to eq(
           [previous_item.merge("location" => "Main hall", "organizer" => "Student office")],
         )
-        expect(item.reload.revision).to eq(1)
+        expect(item.reload.revision).to eq(2)
       end
     end
 

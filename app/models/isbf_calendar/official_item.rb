@@ -4,9 +4,9 @@ module IsbfCalendar
   class OfficialItem < ActiveRecord::Base
     self.table_name = "isbf_calendar_official_items"
 
-    SNAPSHOT_FIELDS = %w[title schedule_kind starts_at ends_at all_day].freeze
+    SNAPSHOT_FIELDS = %w[title schedule_kind starts_at ends_at all_day location].freeze
     PUBLICATION_FIELDS =
-      (SNAPSHOT_FIELDS + %w[location organizer registration_deadline_id]).freeze
+      (SNAPSHOT_FIELDS + %w[organizer registration_deadline_id]).freeze
     REVISION_FIELDS = (SNAPSHOT_FIELDS + %w[cancelled]).freeze
 
     belongs_to :topic, -> { with_deleted }

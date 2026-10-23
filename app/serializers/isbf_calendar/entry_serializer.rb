@@ -8,6 +8,7 @@ module IsbfCalendar
                :ends_at,
                :all_day,
                :note,
+               :location,
                :schedule_kind,
                :source_item_id,
                :accepted_revision,
@@ -23,6 +24,10 @@ module IsbfCalendar
 
     def ends_at
       object.ends_at.iso8601
+    end
+
+    def location
+      object.effective_location(scope)
     end
 
     def needs_update

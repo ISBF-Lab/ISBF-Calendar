@@ -49,6 +49,8 @@ module IsbfCalendar
         lines << "DTEND:#{timestamp(entry.ends_at)}" if entry.ends_at > entry.starts_at
       end
       lines << "DESCRIPTION:#{text(entry.note)}" if entry.note.present?
+      location = entry.effective_location(@guardian)
+      lines << "LOCATION:#{text(location)}" if location.present?
       lines << "STATUS:CANCELLED" if cancelled
       if source&.visible_to?(@guardian)
         lines << "URL:#{IcalEncoder.encode_uri(source.topic.url)}"
