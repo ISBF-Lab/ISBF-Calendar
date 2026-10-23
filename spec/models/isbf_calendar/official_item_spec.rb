@@ -342,7 +342,6 @@ RSpec.describe IsbfCalendar::OfficialItem do
 
       expect_not_enqueued_with(job: :isbf_calendar_notify_change) do
         item.update!(
-          location: "Main hall",
           organizer: "Student office",
           registration_deadline: deadline
         )
@@ -350,7 +349,6 @@ RSpec.describe IsbfCalendar::OfficialItem do
 
       expect(item.reload).to have_attributes(
         revision: 1,
-        location: "Main hall",
         organizer: "Student office",
         registration_deadline_id: deadline.id
       )

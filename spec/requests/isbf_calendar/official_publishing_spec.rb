@@ -186,7 +186,7 @@ RSpec.describe PostsController do
       expect(topic.first_post.reload.raw).to eq(original_raw)
     end
 
-    it "records a display information edit in the post revision without changing the calendar version" do
+    it "records a location edit in the post revision and advances the calendar version" do
       SiteSetting.editing_grace_period = 0
       original_raw = topic.first_post.raw
       original_item =
@@ -214,7 +214,7 @@ RSpec.describe PostsController do
       expect(item.reload).to have_attributes(
         location: "Main hall",
         organizer: "Student office",
-        revision: 1
+        revision: 2
       )
       expect(topic.first_post.reload.raw).to eq(original_raw)
       before_items, after_items =
@@ -253,7 +253,7 @@ RSpec.describe PostsController do
       expect(item.reload).to have_attributes(
         location: "Original hall",
         organizer: "Original office",
-        revision: 1
+        revision: 2
       )
     end
 

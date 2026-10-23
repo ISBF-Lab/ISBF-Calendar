@@ -148,7 +148,8 @@ RSpec.describe IsbfCalendar::AddOfficialEntry do
         ).to eq(item.snapshot)
         expect(result[:entry]).to have_attributes(
           source_item_id: item.id,
-          accepted_revision: 1
+          accepted_revision: item.revision,
+          location: "Main hall"
         )
         expect(IsbfCalendar::Entry.where(source_item: deadline)).to be_empty
       end

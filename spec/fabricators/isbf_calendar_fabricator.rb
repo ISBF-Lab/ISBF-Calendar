@@ -34,6 +34,7 @@ Fabricator(:isbf_calendar_official_entry, from: :isbf_calendar_entry) do
   starts_at { |attributes| attributes[:source_item].starts_at }
   ends_at { |attributes| attributes[:source_item].ends_at }
   all_day { |attributes| attributes[:source_item].all_day }
+  location { |attributes| attributes[:source_item].location }
   schedule_kind { |attributes| attributes[:source_item].schedule_kind }
   accepted_revision { |attributes| attributes[:source_item].revision }
   notified_revision { |attributes| attributes[:source_item].revision }

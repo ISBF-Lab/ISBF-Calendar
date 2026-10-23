@@ -11,6 +11,7 @@ module IsbfCalendar
 
     validates :title, presence: true, length: { maximum: 120 }
     validates :note, length: { maximum: 2000 }
+    validates :location, length: { maximum: 255 }
     validates :starts_at, :ends_at, presence: true
     validates :schedule_kind, inclusion: { in: %w[event deadline] }
     validate :ends_after_start
@@ -33,6 +34,14 @@ module IsbfCalendar
     def needs_update?
       source_item &&
         source_item.revision > [accepted_revision, dismissed_revision].max
+    end
+
+    def effective_location(guardian)
+      return location unless location.nil?
+      return "" unless source_item && accepted_revision == source_item.revision
+      return "" unless source_item.visible_to?(guardian)
+
+      source_item.location.to_s
     end
 
     private

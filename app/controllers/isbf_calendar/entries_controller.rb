@@ -102,13 +102,18 @@ module IsbfCalendar
     end
 
     def entry_attributes
+      raw = params.require(:entry)
+      if raw.key?(:location) && !raw[:location].nil? && !raw[:location].is_a?(String)
+        raise Discourse::InvalidParameters.new(:location)
+      end
       data =
-        params.require(:entry).permit(
+        raw.permit(
           :title,
           :starts_at,
           :ends_at,
           :all_day,
-          :note
+          :note,
+          :location
         )
       attributes = {}
       attributes[:title] = data[:title]&.strip if data.key?(:title)
@@ -120,6 +125,7 @@ module IsbfCalendar
         data[:all_day]
       ) if data.key?(:all_day)
       attributes[:note] = data[:note]&.strip if data.key?(:note)
+      attributes[:location] = data[:location].to_s.strip if data.key?(:location)
       attributes
     end
 
