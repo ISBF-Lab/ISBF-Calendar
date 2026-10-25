@@ -23,7 +23,7 @@ Discourse 插件，提供 `/isbf/calendar`、`/isbf/workbench` 和仅当前用�
 - `GET /isbf/api/entries.json?from=<ISO8601>&to=<ISO8601>`：当前用户在时间范围内的行程，范围最多 62 天。
 - `GET /isbf/api/entries/:id.json`：本人单条行程，可用于通知跨月定位。
 - `POST /isbf/api/entries.json`：创建手动行程，返回 201。
-- `PATCH /isbf/api/entries/:id.json`：修改手动行程，或仅更新官方导入项的 `note`。
+- `PATCH /isbf/api/entries/:id.json`：修改手动行程，或更新官方导入项的私人备注和提醒。
 - `DELETE /isbf/api/entries/:id.json`：删除本人行程。
 - `POST /isbf/api/official-items/:id/add.json`：传入 `revision`，新增返回 201，已添加返回 200。
 - `GET /isbf/api/entry-updates.json`：所有月份的待确认变更。
@@ -34,7 +34,25 @@ Discourse 插件，提供 `/isbf/calendar`、`/isbf/workbench` 和仅当前用�
 
 行程响应包含 `source_item_id`、`accepted_revision`、`needs_update`、`cancelled`、`source_unavailable`、`source_url` 和 `latest_source`。后者仅在当前用户仍可访问源消息时包含最新内容；无法访问的取消项仅暴露取消状态与版本。
 
-不支持重复日程、到点提醒或自然语言识别。
+不支持重复日程或自然语言识别。
+
+## 可选日程提醒（0.6.0）
+
+管理员在 Discourse 原生站点设置中选择一种提醒策略：isbf_calendar_reminders_enabled 默认为 true，可关闭提醒任务与订阅闹铃；isbf_calendar_reminder_delivery_mode 默认为 in_app（站内提醒），另一选项为 subscription_preferred（订阅日历优先，未满足订阅条件时回退站内提醒）。这是一个投递策略，不是两路独立开关。仅对启用、已批准、非暂存且未被停权的日程所有者处理；不会发送邮件，也不调用 PostAlerter 的推送流程。原有官方改期通知保持独立。
+
+每条日程默认 reminder_mode: "none"。定时行程支持 before_5m、before_15m、before_30m、before_1h、before_24h，以已保存开始时刻为锚点。全天行程仅支持 same_day_9am 和 previous_day_9am。个人全天项保留既有 UTC 日期约定，必须提交有效浏览器 IANA reminder_timezone，按该日期当地上午 9 点计算并正确处理夏令时；官方全天项固定按 Asia/Shanghai 的日期和上午 9 点计算，不把时区换算后的前一天当成源日期。
+
+创建或修改手动日程在 entry 中传 reminder_mode、reminder_timezone；添加官方时间项在顶层与 revision 一同传入，提醒与初始快照在同一事务中保存。重复添加返回原记录，不覆盖已有提醒。官方导入项仅允许修改 note 和这两个提醒字段。省略字段保留已有值，none 清除提醒，全天属性改变导致模式不兼容时重置为 none。响应增加 reminder_mode、reminder_timezone、ISO 8601 reminder_at 和 reminder_delivery（in_app / calendar / null）；site.isbf_calendar.reminders 提供 enabled、delivery_mode、timed_modes、all_day_modes。
+
+开始时刻、全天属性或提醒设置变化会生成新的提醒版本并使旧导出证据失效；备注、地点、标题及仅结束时间编辑不重置已处理标记。接受官方更新时沿用相同规则，仅信息更新保留既有提醒状态；保留原信息继续使用旧快照；源项取消、删除、隐藏或当前用户失去来源访问权限时均不发提醒。已过去的提醒允许保存，但不会立即补发。每分钟原生计划任务按待处理提醒索引分批查找；正常延迟最多补发 10 分钟，定时项开始时刻还须在未来，全天提醒须处于相同本地日期。提醒在全局停用期间经过触发时刻，再启用时不追补。通知创建与已处理标记在同一日程行锁和事务内完成，失败回滚后可重试；每个提醒版本只作一次投递决定。
+
+subscription_preferred 仅在**当前提醒版本的 VALARM 已通过当前仍有效、具备 isbf-calendar:personal_calendar scope 的原生 calendar-subscriptions UserApiKey 实际请求导出**后，才在到点时采用 calendar，省略本站通知。仅生成链接、仅浏览器会话下载、其他应用或其他 feed 的密钥均不会建立此证据。撤销、过期、移除 scope、轮换密钥，或修改提醒后尚未重新读取 feed，都会回退站内提醒。订阅导出本身不写数据库；控制器在完整构建并渲染 ICS 后，用日程行锁和提醒版本比对记录导出证据，旧请求不能确认新提醒。不会为了提醒自动生成或轮换订阅密钥。
+
+ICS 在此策略下为每个有效未来提醒输出一个 ACTION:DISPLAY、UTC 绝对 TRIGGER 和经过原生转义的标题 DESCRIPTION。全局策略变化通过 PluginStore 的版本及时间戳使旧证据失效并推进 LAST-MODIFIED，不新增表；UID、既有订阅密钥和私人快照约定保持一致。
+
+服务器能证明有效订阅密钥读取了包含当前闹铃的 feed，**不能证明 Apple 等客户端已保存、显示或实际响铃**。客户端刷新、日历提醒权限和通知设置由客户端控制。先前下载或缓存的闹铃在客户端下一次刷新前不能由服务器强制撤回；改期、取消、全局策略变化或密钥撤销后，旧客户端缓存仍可能响铃，因此无法承诺设备端绝不重复。calendar 表示本站已选择日历投递通道，不表示设备送达。
+
+迁移 20261025000000_add_reminders_to_isbf_calendar_entries.rb 仅为现有日程表增加提醒列及待处理索引；旧日程保持 none。回滚时先关闭提醒并部署旧代码，保留增量列以免丢失已保存设置；客户端缓存按上述刷新限制处理。新增模型、API、任务和 ICS 规格覆盖模式、DST、官方日期、权限、幂等、事务失败、实际订阅请求、密钥生命周期及旧导出回执。本机缺少完整 Discourse/Ruby 环境时，以 CI 的实际 RSpec 结果为准，静态检查不替代运行或真机提醒验收。
 
 ## Apple 日历私人订阅
 

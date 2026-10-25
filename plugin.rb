@@ -2,7 +2,7 @@
 
 # name: isbf-calendar
 # about: Private personal schedules and routes for the ISBF calendar UI
-# version: 0.5.0
+# version: 0.6.0
 # authors: ISBF Lab
 # url: https://github.com/ISBF-Lab/ISBF-Calendar
 # required_version: 3.4.0
@@ -14,9 +14,11 @@ end
 require_relative "lib/isbf_calendar/engine"
 require "time"
 require_relative "lib/isbf_calendar/official_items"
+require_relative "app/models/isbf_calendar/reminder_delivery_mode"
 register_svg_icon "calendar-days"
 
 after_initialize do
+  require_relative "lib/isbf_calendar/reminders"
   require_relative "lib/isbf_calendar/subscription_feed"
   subscription_available = respond_to?(:register_calendar_subscription_feed)
   if subscription_available
@@ -47,6 +49,11 @@ after_initialize do
   require_relative "app/serializers/isbf_calendar/official_item_serializer"
   require_relative "app/serializers/isbf_calendar/entry_serializer"
   require_relative "app/jobs/regular/isbf_calendar_notify_change"
+  require_relative "app/jobs/scheduled/isbf_calendar_send_reminders"
+
+  on(:site_setting_changed) do |name, _old_value, _new_value|
+    IsbfCalendar::Reminders.policy_changed! if IsbfCalendar::Reminders::SETTINGS.include?(name.to_sym)
+  end
 
   reloadable_patch do
     Topic.has_many :isbf_official_calendar_items,
@@ -159,6 +166,7 @@ after_initialize do
       official_category_id: IsbfCalendar.official_category_id,
       timezone: IsbfCalendar::TIMEZONE,
       max_items: IsbfCalendar::MAX_OFFICIAL_ITEMS,
+      reminders: IsbfCalendar::Reminders.metadata,
       subscription_feed: subscription_available ? IsbfCalendar::SubscriptionFeed::NAME : nil
     }
   end

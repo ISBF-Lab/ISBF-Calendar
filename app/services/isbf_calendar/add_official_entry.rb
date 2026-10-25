@@ -7,6 +7,8 @@ module IsbfCalendar
     params do
       attribute :id, :integer
       attribute :revision, :integer
+      attribute :reminder_mode, :string
+      attribute :reminder_timezone, :string
       validates :id,
                 :revision,
                 numericality: {
@@ -36,7 +38,7 @@ module IsbfCalendar
       item.revision == params.revision
     end
 
-    def add_entry(item:, guardian:)
+    def add_entry(item:, guardian:, params:)
       entry =
         Entry.find_or_initialize_by(
           user_id: guardian.user.id,
@@ -50,6 +52,8 @@ module IsbfCalendar
             notified_revision: item.revision
           )
         )
+        entry.reminder_mode = params.reminder_mode unless params.reminder_mode.nil?
+        entry.reminder_timezone = params.reminder_timezone unless params.reminder_timezone.nil?
         entry.save!
       end
       context[:entry] = entry

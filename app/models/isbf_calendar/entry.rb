@@ -15,6 +15,9 @@ module IsbfCalendar
     validates :starts_at, :ends_at, presence: true
     validates :schedule_kind, inclusion: { in: %w[event deadline] }
     validate :ends_after_start
+    before_validation :normalize_reminder
+    validate :valid_reminder
+    before_save :plan_reminder
 
     scope :overlapping,
           ->(from, to) do
@@ -45,6 +48,46 @@ module IsbfCalendar
     end
 
     private
+
+    def normalize_reminder
+      modes = all_day? ? Reminders::ALL_DAY_MODES : Reminders::TIMED_MODES
+      if persisted? && will_save_change_to_all_day? && !modes.include?(reminder_mode)
+        self.reminder_mode = "none"
+      end
+      self.reminder_timezone = IsbfCalendar::TIMEZONE if source_item_id && all_day? && reminder_mode != "none"
+      self.reminder_timezone = nil if reminder_mode == "none"
+    end
+
+    def valid_reminder
+      modes = all_day? ? Reminders::ALL_DAY_MODES : Reminders::TIMED_MODES
+      errors.add(:reminder_mode, :invalid) unless modes.include?(reminder_mode)
+      return if reminder_mode == "none"
+      if (all_day? || reminder_timezone.present?) && !Reminders.valid_timezone?(reminder_timezone)
+        errors.add(:reminder_timezone, :invalid)
+      end
+    end
+
+    def plan_reminder
+      return unless new_record? ||
+        %w[starts_at all_day reminder_mode reminder_timezone].any? { |field| will_save_change_to_attribute?(field) }
+
+      self.reminder_generation += 1
+      self.reminder_configured_at = Time.current
+      self.reminder_at =
+        if Reminders::TIMED_OFFSETS.key?(reminder_mode)
+          starts_at - Reminders::TIMED_OFFSETS.fetch(reminder_mode)
+        elsif Reminders::ALL_DAY_MODES.include?(reminder_mode) && reminder_mode != "none"
+          date_zone = source_item_id ? IsbfCalendar::TIMEZONE : "UTC"
+          date = starts_at.in_time_zone(date_zone).to_date
+          date -= 1 if reminder_mode == "previous_day_9am"
+          Time.find_zone!(reminder_timezone).local(date.year, date.month, date.day, 9)
+        end
+      self.reminder_processed_at = reminder_at && reminder_at <= reminder_configured_at ? reminder_configured_at : nil
+      self.reminder_delivery = nil
+      self.reminder_exported_generation = nil
+      self.reminder_exported_key_id = nil
+      self.reminder_exported_policy = nil
+    end
 
     def ends_after_start
       return if starts_at.blank? || ends_at.blank? || ends_at > starts_at

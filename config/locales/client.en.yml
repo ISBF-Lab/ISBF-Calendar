@@ -1,8 +1,12 @@
 en:
   js:
     isbf_calendar:
+      delivery_modes:
+        in_app: "Site notifications"
+        subscription_preferred: "Prefer subscribed calendar; site notification fallback"
       preferences:
         personal_description: "Your saved ISBF calendar entries and private notes, from the past year through the next two years."
     notifications:
       isbf_calendar:
+        reminder: "Calendar reminder: %{topic_title}"
         changed: "An official calendar item you added has changed: %{topic_title}"

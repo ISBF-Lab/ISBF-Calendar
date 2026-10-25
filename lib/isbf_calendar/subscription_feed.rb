@@ -6,12 +6,20 @@ module IsbfCalendar
     SCOPE = "isbf-calendar:personal_calendar"
     ACTION = "isbf_calendar/subscriptions#show"
 
+    attr_reader :reminder_exports, :reminder_policy_version
+
     def initialize(entries:, guardian:)
       @entries = entries
       @guardian = guardian
+      @reminder_exports = []
+      policy = Reminders.policy
+      @reminder_policy_version = policy["version"].to_s
+      stamp = policy["modified_at"] || policy["changed_at"]
+      @reminder_policy_changed_at = Time.iso8601(stamp) if stamp
     end
 
     def to_ical
+      @reminder_exports.clear
       lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -31,6 +39,7 @@ module IsbfCalendar
       source = entry.source_item
       cancelled = source&.cancelled?
       modified = cancelled ? [entry.updated_at, source.updated_at].max : entry.updated_at
+      modified = [modified, @reminder_policy_changed_at].compact.max
       lines = [
         "BEGIN:VEVENT",
         "UID:isbf-personal-#{entry.user_id}-#{entry.id}@#{Discourse.current_hostname}",
@@ -54,6 +63,20 @@ module IsbfCalendar
       lines << "STATUS:CANCELLED" if cancelled
       if source&.visible_to?(@guardian)
         lines << "URL:#{IcalEncoder.encode_uri(source.topic.url)}"
+      end
+      if Reminders.exportable?(entry, @guardian)
+        lines.concat([
+          "BEGIN:VALARM",
+          "ACTION:DISPLAY",
+          "TRIGGER;VALUE=DATE-TIME:#{timestamp(entry.reminder_at)}",
+          "DESCRIPTION:#{text(entry.title)}",
+          "END:VALARM",
+        ])
+        @reminder_exports << {
+          id: entry.id,
+          generation: entry.reminder_generation,
+          at: entry.reminder_at,
+        }
       end
       lines << "END:VEVENT"
     end
