@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ISBF-Lab/ISBF-UI
-          ref: 75340b6a39a6870542f958b11e43ce8e115f3aa1
+          ref: e24ef2d377cf09efb53be3eef26a72307167266d
           path: discourse/themes/isbf-campus-feed
           persist-credentials: false
       - name: Load plugin and unchanged identity dependency
@@ -86,19 +86,20 @@ jobs:
         env:
           RAILS_ENV: development
           DISCOURSE_DEV_DB: discourse_test
-        run: bin/rails runner 'theme = RemoteTheme.import_theme_from_directory(Rails.root.join("themes/isbf-campus-feed")); theme.set_default!'
+        run: |
+          bin/rails runner 'theme = RemoteTheme.import_theme_from_directory(Rails.root.join("themes/isbf-campus-feed")); theme.set_default!; errors = theme.theme_fields.reject { |f| f.error.blank? }; abort(errors.map { |f| "#{f.name}: #{f.error}" }.join("\n")) if errors.any?; runtime = theme.javascript_cache&.content; abort("Runtime theme compilation failed") if runtime.blank? || runtime.lstrip.start_with?("throw new Error"); tests, digest = theme.baked_js_tests_with_digest; abort("Native theme test bundle missing") if tests.blank? || digest.blank?; abort("Native theme test compilation failed") if tests.lstrip.start_with?("throw new Error"); puts "Native theme test bundle: #{digest}"'
       - name: Native calendar and reminder component regressions
         env:
           DISCOURSE_DEV_DB: discourse_test
           QUNIT_RAILS_ENV: development
         run: |
           mkdir -p tmp/isbf-reminder-results
-          bin/rake 'themes:qunit[name,ISBF Campus Feed]' | tee tmp/isbf-reminder-results/theme-qunit.log
+          bin/qunit --standalone --target plugins --qunit-path /theme-qunit --theme-name 'ISBF Campus Feed' | tee tmp/isbf-reminder-results/theme-qunit.log
       - name: Responsive real-page calendar and reminder flow
         if: always() && steps.assets.outcome == 'success'
         run: |
           mkdir -p tmp/isbf-reminder-results
-          bin/rspec themes/isbf-campus-feed/spec/system/calendar_reminders_spec.rb | tee tmp/isbf-reminder-results/browser-rspec.log
+          bin/rspec themes/isbf-campus-feed/spec/system/calendar_reminders_spec.rb --fail-fast | tee tmp/isbf-reminder-results/browser-rspec.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -106,5 +107,7 @@ jobs:
           path: |
             discourse/tmp/isbf-reminder-results/
             discourse/log/test.log
+            discourse/log/development.log
+            discourse/tmp/test_server_*.log
           if-no-files-found: warn
           retention-days: 14
