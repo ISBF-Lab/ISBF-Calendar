@@ -173,7 +173,7 @@ RSpec.describe "Personal calendar reminder API" do
     expect(SiteSetting.isbf_calendar_reminder_delivery_mode).to eq("subscription_preferred")
     put "/admin/site_settings/isbf_calendar_reminder_delivery_mode.json",
         params: { isbf_calendar_reminder_delivery_mode: "both" }
-    expect(response.status).not_to eq(200)
+    expect(response.status).to be_in([400, 422])
     expect(SiteSetting.isbf_calendar_reminder_delivery_mode).to eq("subscription_preferred")
   end
 end

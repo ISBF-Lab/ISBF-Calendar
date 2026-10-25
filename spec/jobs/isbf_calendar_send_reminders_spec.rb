@@ -27,7 +27,10 @@ RSpec.describe Jobs::IsbfCalendarSendReminders do
 
   it "sends one native custom notification and prevents retry duplicates" do
     record = new_entry
-    expect(Notification).to receive(:create!).with(hash_including(skip_send_email: true)).once.and_call_original
+    expect(Notification).to receive(:create!).once.and_wrap_original do |original, attributes|
+      expect(attributes.fetch(:skip_send_email)).to eq(true)
+      original.call(attributes)
+    end
     run_at(due_at + 30.seconds)
     run_at(due_at + 1.minute)
     expect(notifications.count).to eq(1)
