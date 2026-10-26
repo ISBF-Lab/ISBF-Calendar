@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ISBF-Lab/ISBF-UI
-          ref: 5ee92a7ca3f11572e64e78d25c782e0fa832d66c
+          ref: 5b611db9b70f77380a370ce3acc35e98db18f85d
           path: discourse/themes/isbf-campus-feed
           persist-credentials: false
       - name: Load plugin and unchanged identity dependency
@@ -109,5 +109,6 @@ jobs:
             discourse/log/test.log
             discourse/log/development.log
             discourse/tmp/test_server_*.log
+            discourse/tmp/capybara/
           if-no-files-found: warn
           retention-days: 14
