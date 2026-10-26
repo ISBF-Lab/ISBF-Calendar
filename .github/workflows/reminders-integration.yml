@@ -94,7 +94,7 @@ jobs:
           QUNIT_RAILS_ENV: development
         run: |
           mkdir -p tmp/isbf-reminder-results
-          timeout 300 bin/qunit --standalone --target plugins --qunit-path /theme-qunit --theme-name 'ISBF Campus Feed' | tee tmp/isbf-reminder-results/theme-qunit.log
+          timeout 300 bin/rake 'themes:qunit[name,ISBF Campus Feed]' | tee tmp/isbf-reminder-results/theme-qunit.log
       - name: Responsive real-page calendar and reminder flow
         if: always() && steps.assets.outcome == 'success'
         run: |
