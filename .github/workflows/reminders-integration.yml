@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ISBF-Lab/ISBF-UI
-          ref: e24ef2d377cf09efb53be3eef26a72307167266d
+          ref: d3f52ad921d76d1256d518d0800532d5a9977b15
           path: discourse/themes/isbf-campus-feed
           persist-credentials: false
       - name: Load plugin and unchanged identity dependency
@@ -94,7 +94,7 @@ jobs:
           QUNIT_RAILS_ENV: development
         run: |
           mkdir -p tmp/isbf-reminder-results
-          bin/qunit --standalone --target plugins --qunit-path /theme-qunit --theme-name 'ISBF Campus Feed' | tee tmp/isbf-reminder-results/theme-qunit.log
+          timeout 300 bin/qunit --standalone --target plugins --qunit-path /theme-qunit --theme-name 'ISBF Campus Feed' | tee tmp/isbf-reminder-results/theme-qunit.log
       - name: Responsive real-page calendar and reminder flow
         if: always() && steps.assets.outcome == 'success'
         run: |
