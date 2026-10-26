@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ISBF-Lab/ISBF-UI
-          ref: d3f52ad921d76d1256d518d0800532d5a9977b15
+          ref: 44b6a7362d8f37504ca784cf04dff8f335667d05
           path: discourse/themes/isbf-campus-feed
           persist-credentials: false
       - name: Load plugin and unchanged identity dependency
