@@ -1,0 +1,114 @@
+name: Calendar reminder frontend integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: calendar-reminder-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calendar-ui:
+    name: Native calendar reminder UI
+    runs-on: ubuntu-latest
+    container: discourse/discourse_test:release
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+        working-directory: discourse
+    env:
+      RAILS_ENV: test
+      LOAD_PLUGINS: "1"
+      PGUSER: discourse
+      PGPASSWORD: discourse
+      PARALLEL_TEST_PROCESSORS: "1"
+      QUNIT_PARALLEL: "1"
+      QUNIT_REUSE_BUILD: "1"
+      NODE_OPTIONS: --max-old-space-size=2048
+      CHEAP_SOURCE_MAPS: "1"
+      EMBER_ENV: development
+      PLAYWRIGHT_BROWSERS_PATH: /home/discourse/.cache/ms-playwright
+      DBUS_SESSION_BUS_ADDRESS: unix:path=/dev/null
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: discourse/discourse
+          ref: 568a006ad8f5d8ae59af64edbd33a151d36fdbde
+          path: discourse
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ISBF-Lab/ISBF-UI
+          ref: 3bb1bf31de36281d0a13011af53f63011bcaf440
+          path: discourse/themes/isbf-campus-feed
+          persist-credentials: false
+      - name: Load plugin and unchanged identity dependency
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/discourse"
+          cp -a ../plugin plugins/isbf-calendar
+          ruby -rjson -rdigest -e 'base="plugins/isbf-calendar/test/dependencies"; manifest=JSON.parse(File.read("#{base}/production-identity.json")); manifest.fetch("files").each { |path, hash| abort("Identity source hash mismatch") unless Digest::SHA256.file("#{base}/discourse-academy-roles/#{path}").hexdigest == hash }'
+          test ! -e plugins/discourse-academy-roles
+          cp -a plugins/isbf-calendar/test/dependencies/discourse-academy-roles plugins/discourse-academy-roles
+          redis-server /etc/redis/redis.conf --daemonize yes --logfile ""
+          chown -R postgres /var/run/postgresql
+          sudo -E -u postgres script/start_test_db.rb
+          sudo -u postgres psql -c "CREATE ROLE discourse LOGIN SUPERUSER PASSWORD 'discourse';"
+      - name: Install native dependencies
+        run: |
+          ln -s /var/www/discourse/vendor/bundle vendor/bundle
+          bundle config --local path vendor/bundle
+          bundle config --local deployment true
+          bundle config --local without ""
+          bundle install --jobs 1
+          pnpm install --frozen-lockfile
+          pnpm playwright-install
+      - name: Prepare isolated database and native assets
+        id: assets
+        run: |
+          bin/rake db:create db:migrate
+          script/assemble_ember_build.rb
+          mkdir -p "$HOME/.pki/nssdb" "$HOME/.local/share/pki/nssdb"
+          dbus-daemon --system --fork 2>/dev/null || true
+          isbf_bus_address=$(dbus-daemon --session --fork --print-address 2>/dev/null)
+          echo "DBUS_SESSION_BUS_ADDRESS=$isbf_bus_address" >> "$GITHUB_ENV"
+      - name: Install actual theme in synthetic database
+        env:
+          RAILS_ENV: development
+          DISCOURSE_DEV_DB: discourse_test
+        run: |
+          bin/rails runner 'theme = RemoteTheme.import_theme_from_directory(Rails.root.join("themes/isbf-campus-feed")); theme.set_default!; errors = theme.theme_fields.reject { |f| f.error.blank? }; abort(errors.map { |f| "#{f.name}: #{f.error}" }.join("\n")) if errors.any?; runtime = theme.javascript_cache&.content; abort("Runtime theme compilation failed") if runtime.blank? || runtime.lstrip.start_with?("throw new Error"); tests, digest = theme.baked_js_tests_with_digest; abort("Native theme test bundle missing") if tests.blank? || digest.blank?; abort("Native theme test compilation failed") if tests.lstrip.start_with?("throw new Error"); puts "Native theme test bundle: #{digest}"'
+      - name: Native calendar and reminder component regressions
+        env:
+          DISCOURSE_DEV_DB: discourse_test
+          QUNIT_RAILS_ENV: development
+        run: |
+          mkdir -p tmp/isbf-reminder-results
+          timeout 300 bin/rake 'themes:qunit[name,ISBF Campus Feed]' | tee tmp/isbf-reminder-results/theme-qunit.log
+      - name: Responsive real-page calendar and reminder flow
+        if: always() && steps.assets.outcome == 'success'
+        run: |
+          mkdir -p tmp/isbf-reminder-results
+          bin/rspec themes/isbf-campus-feed/spec/system/calendar_reminders_spec.rb | tee tmp/isbf-reminder-results/browser-rspec.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: calendar-reminder-integration-${{ github.run_id }}
+          path: |
+            discourse/tmp/isbf-reminder-results/
+            discourse/log/test.log
+            discourse/log/development.log
+            discourse/tmp/test_server_*.log
+            discourse/tmp/capybara/
+          if-no-files-found: warn
+          retention-days: 14

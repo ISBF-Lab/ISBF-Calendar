@@ -18,8 +18,23 @@ module IsbfCalendar
 
       response.headers["Cache-Control"] = "private, no-store"
       response.headers["Referrer-Policy"] = "no-referrer"
-      render plain: SubscriptionFeed.new(entries:, guardian: current_user.guardian).to_ical,
-             content_type: "text/calendar; charset=utf-8"
+      feed = SubscriptionFeed.new(entries:, guardian: current_user.guardian)
+      render plain: feed.to_ical, content_type: "text/calendar; charset=utf-8"
+
+      # Native authentication must actually have selected this key. A browser
+      # session download alone cannot establish calendar subscription consumption.
+      if is_user_api?
+        raw_key = request.get_header(Auth::DefaultCurrentUserProvider::USER_API_KEY) || params[:user_api_key]
+        key = Reminders.native_keys(current_user.id).with_key(raw_key).first
+        if key
+          Reminders.acknowledge_exports(
+            user: current_user,
+            key:,
+            snapshots: feed.reminder_exports,
+            policy_version: feed.reminder_policy_version,
+          )
+        end
+      end
     end
   end
 end

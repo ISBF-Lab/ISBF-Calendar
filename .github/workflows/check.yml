@@ -19,12 +19,12 @@ jobs:
           - name: Complete specs with production identity snapshot
             identity: true
             repository: discourse/discourse
-            ref: main
+            ref: 568a006ad8f5d8ae59af64edbd33a151d36fdbde
             specs: plugins/isbf-calendar/spec
           - name: Subscription adapter on upstream Core
             identity: false
             repository: discourse/discourse
-            ref: main
+            ref: 568a006ad8f5d8ae59af64edbd33a151d36fdbde
             specs: plugins/isbf-calendar/spec/requests/isbf_calendar/subscriptions_controller_spec.rb plugins/isbf-calendar/spec/lib/isbf_calendar/subscription_feed_spec.rb
     container: discourse/discourse_test:slim
     timeout-minutes: 30

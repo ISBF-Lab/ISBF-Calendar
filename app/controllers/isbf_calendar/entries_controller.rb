@@ -48,12 +48,13 @@ module IsbfCalendar
 
     def update
       entry = owned_entry
-      if entry.source_item_id && (params.require(:entry).keys - ["note"]).any?
+      if entry.source_item_id && (params.require(:entry).keys - %w[note reminder_mode reminder_timezone]).any?
         raise Discourse::InvalidParameters.new(
                 I18n.t("isbf_calendar.readonly_fields")
               )
       end
-      entry.update!(entry_attributes)
+      attributes = entry_attributes
+      entry.with_lock { entry.update!(attributes) }
       render json: { entry: serialize(entry) }
     end
 
@@ -126,11 +127,12 @@ module IsbfCalendar
       ) if data.key?(:all_day)
       attributes[:note] = data[:note]&.strip if data.key?(:note)
       attributes[:location] = data[:location].to_s.strip if data.key?(:location)
-      attributes
+      attributes.merge(Reminders.attributes_from_payload(raw))
     end
 
     def parse_time(value)
-      Time.iso8601(value.to_s)
+      raise ArgumentError unless value.is_a?(String) && value.match?(/(?:Z|[+-]\d{2}:\d{2})\z/)
+      Time.iso8601(value)
     rescue ArgumentError
       raise Discourse::InvalidParameters
     end

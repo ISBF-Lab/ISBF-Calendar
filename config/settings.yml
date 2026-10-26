@@ -1,0 +1,7 @@
+plugins:
+  isbf_calendar_reminders_enabled:
+    default: true
+  isbf_calendar_reminder_delivery_mode:
+    type: enum
+    default: in_app
+    enum: "IsbfCalendar::ReminderDeliveryMode"

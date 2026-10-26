@@ -1,8 +1,11 @@
 en:
+  site_settings:
+    isbf_calendar_reminders_enabled: "Enable optional personal calendar reminders."
+    isbf_calendar_reminder_delivery_mode: "Reminder delivery: in_app sends a site notification; subscription_preferred uses an exported calendar alarm when its native subscription key remains active, otherwise falls back to a site notification."
   isbf_calendar:
     subscription_name: "ISBF personal calendar"
     subscription_window: "Saved personal entries from the past year through the next two years. Private notes included."
     invalid_items: "Check the official calendar items and their versions."
     invalid_time: "Enter a valid activity time or deadline."
     version_conflict: "The official information has changed. Refresh it before continuing."
-    readonly_fields: "Only the private note can be edited for an official calendar entry."
+    readonly_fields: "Only the private note and reminder can be edited for an official calendar entry."

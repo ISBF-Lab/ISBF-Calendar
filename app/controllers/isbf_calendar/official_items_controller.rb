@@ -5,8 +5,9 @@ module IsbfCalendar
     before_action :ensure_logged_in
 
     def add
+      reminder_attributes = Reminders.attributes_from_payload(params)
       AddOfficialEntry.call(
-        params: params.permit(:id, :revision),
+        params: params.permit(:id, :revision).to_h.merge(reminder_attributes),
         guardian: current_user.guardian
       ) do
         on_success do |entry:, created:|

@@ -16,7 +16,11 @@ module IsbfCalendar
                :cancelled,
                :source_unavailable,
                :source_url,
-               :latest_source
+               :latest_source,
+               :reminder_mode,
+               :reminder_timezone,
+               :reminder_at,
+               :reminder_delivery
 
     def starts_at
       object.starts_at.iso8601
@@ -24,6 +28,14 @@ module IsbfCalendar
 
     def ends_at
       object.ends_at.iso8601
+    end
+
+    def reminder_at
+      object.reminder_at&.iso8601
+    end
+
+    def reminder_delivery
+      Reminders.delivery_for(object, scope)
     end
 
     def location

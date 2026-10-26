@@ -1,8 +1,12 @@
 zh_CN:
   js:
     isbf_calendar:
+      delivery_modes:
+        in_app: "站内提醒"
+        subscription_preferred: "订阅日历优先，未订阅时站内提醒"
       preferences:
         personal_description: "个人保存的国金日程和私人备注，范围为过去一年至未来两年。"
     notifications:
       isbf_calendar:
+        reminder: "日程提醒：%{topic_title}"
         changed: "你添加的官方行程已有变更：%{topic_title}"
