@@ -88,12 +88,13 @@ module IsbfCalendar
       )
     end
 
-    def self.calendar_delivery?(entry)
+    def self.calendar_delivery?(entry, active_key_ids: nil)
       subscription_preferred? &&
         entry.reminder_exported_generation == entry.reminder_generation &&
         entry.reminder_exported_policy == policy_version &&
         entry.reminder_exported_key_id.present? &&
-        native_keys(entry.user_id).where(id: entry.reminder_exported_key_id).exists?
+        (active_key_ids ? active_key_ids.include?(entry.reminder_exported_key_id) :
+          native_keys(entry.user_id).where(id: entry.reminder_exported_key_id).exists?)
     end
 
     def self.delivery_for(entry, guardian)
@@ -107,6 +108,13 @@ module IsbfCalendar
       subscription_preferred? && entry.reminder_at && entry.reminder_at > now &&
         !entry.reminder_processed_at && eligible_user?(guardian.user) &&
         available_source?(entry, guardian)
+    end
+
+    def self.retained_alarm?(entry, guardian, now:, active_key_ids: nil)
+      subscription_preferred? && entry.reminder_at && entry.reminder_at <= now &&
+        entry.reminder_configured_at && entry.reminder_at > entry.reminder_configured_at &&
+        eligible_user?(guardian.user) && available_source?(entry, guardian) &&
+        calendar_delivery?(entry, active_key_ids:)
     end
 
     # Only called after a complete ICS response has been built and rendered with

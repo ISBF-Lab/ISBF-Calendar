@@ -26,7 +26,7 @@ jobs:
             repository: discourse/discourse
             ref: 568a006ad8f5d8ae59af64edbd33a151d36fdbde
             specs: plugins/isbf-calendar/spec/requests/isbf_calendar/subscriptions_controller_spec.rb plugins/isbf-calendar/spec/lib/isbf_calendar/subscription_feed_spec.rb
-    container: discourse/discourse_test:slim
+    container: discourse/discourse_test@sha256:94eca5318fed6171264b95204914de76a113c305cebb72d9fa9527e2c4496494
     timeout-minutes: 30
     defaults:
       run:

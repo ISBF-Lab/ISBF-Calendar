@@ -48,7 +48,7 @@ Discourse 插件，提供 `/isbf/calendar`、`/isbf/workbench` 和仅当前用�
 
 subscription_preferred 仅在**当前提醒版本的 VALARM 已通过当前仍有效、具备 isbf-calendar:personal_calendar scope 的原生 calendar-subscriptions UserApiKey 实际请求导出**后，才在到点时采用 calendar，省略本站通知。仅生成链接、仅浏览器会话下载、其他应用或其他 feed 的密钥均不会建立此证据。撤销、过期、移除 scope、轮换密钥，或修改提醒后尚未重新读取 feed，都会回退站内提醒。订阅导出本身不写数据库；控制器在完整构建并渲染 ICS 后，用日程行锁和提醒版本比对记录导出证据，旧请求不能确认新提醒。不会为了提醒自动生成或轮换订阅密钥。
 
-ICS 在此策略下为每个有效未来提醒输出一个 ACTION:DISPLAY、UTC 绝对 TRIGGER 和经过原生转义的标题 DESCRIPTION。全局策略变化通过 PluginStore 的版本及时间戳使旧证据失效并推进 LAST-MODIFIED，不新增表；UID、既有订阅密钥和私人快照约定保持一致。
+ICS 在此策略下为每个有效未来提醒输出一个 ACTION:DISPLAY 和经过原生转义的标题 DESCRIPTION。定时行程使用相对开始时刻的标准 TRIGGER（如 -PT5M、-PT24H），对应原先计算的 UTC 提醒时刻；全天行程仍使用 UTC 绝对时刻，保持所选时区及夏令时规则。已通过有效原生密钥确认导出的当前版本闹钟，在到期和任务处理后继续保留于订阅，不因时间流逝自行删除，也不再次建立导出证据或发送站内通知；从未确认导出的过期提醒仍不导出。关闭提醒、取消或来源不可访问时移除闹钟。每个事件输出 SEQUENCE:reminder_generation，同一秒内修改提醒也会推进版本，UID 保持稳定。全局策略变化通过 PluginStore 的版本及时间戳使旧证据失效并推进 LAST-MODIFIED，不新增表；既有订阅密钥和私人快照约定保持一致。
 
 服务器能证明有效订阅密钥读取了包含当前闹铃的 feed，**不能证明 Apple 等客户端已保存、显示或实际响铃**。客户端刷新、日历提醒权限和通知设置由客户端控制。先前下载或缓存的闹铃在客户端下一次刷新前不能由服务器强制撤回；改期、取消、全局策略变化或密钥撤销后，旧客户端缓存仍可能响铃，因此无法承诺设备端绝不重复。calendar 表示本站已选择日历投递通道，不表示设备送达。
 
